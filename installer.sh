@@ -91,6 +91,11 @@ SEPQUE="_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_"
 XLXINS=$(pwd)
 USRSRC="/usr/src"
 HOMEIP=$(hostname -I 2>/dev/null | awk '{print $1}')
+# If the first address is the loopback, the real LAN/WAN address (if any)
+# is usually the second one reported by hostname -I
+if [ "$HOMEIP" == "127.0.0.1" ]; then
+    HOMEIP=$(hostname -I 2>/dev/null | awk '{print $2}')
+fi
 HOMEIP=${HOMEIP:-127.0.0.1}
 PUBLIP=$(curl -m 5 -s -f https://v4.ident.me || curl -m 5 -s -f https://api4.ipify.org || true)
 if [ -z "$PUBLIP" ]; then
@@ -737,18 +742,13 @@ question_16() {
 
         print_gray "Suggested: $SUGGESTED $ACCEPT"
 
-        LAST_ASCII=$((65 + LAST_INDEX))
-
         while true; do
             printf "> "
             read -r MODAUTO
             MODAUTO=${MODAUTO:-$SUGGESTED}
             MODAUTO=${MODAUTO^^}
 
-            # Convert input to ASCII
-            ASCII=$(printf "%d" "'$MODAUTO")
-
-            if (( ASCII >= 65 && ASCII <= LAST_ASCII )); then
+            if is_module_valid "$MODAUTO"; then
                 break
             fi
 
@@ -825,7 +825,7 @@ while true; do
 
     review_settings
 
-    print_yellow "Settings correct? Press [ENTER] to confirm, or type a question number to edit it:"
+    print_yellow "Settings correct? Press [ENTER] to confirm, type a question number to edit it, or [X] to cancel the installation."
     printf "> "
     read -r CONFIRM
     CONFIRM=${CONFIRM:-YES}
@@ -834,6 +834,12 @@ while true; do
     if [[ "$CONFIRM" == "YES" ]]; then
         msg_success "Information verified, installation starting!"
         break
+    fi
+
+    if [[ "$CONFIRM" == "X" ]]; then
+        echo ""
+        msg_caution "Installation cancelled by user."
+        exit 1
     fi
 
     case "$CONFIRM" in
@@ -898,7 +904,7 @@ while true; do
                 fi
                 ;;
             *)
-                msg_caution "Invalid input. Press [ENTER] to confirm or enter a question number (1-16)."
+                msg_caution "Invalid input. Press [ENTER] to confirm, enter a question number (1-16), or [X] to cancel."
                 ;;
         esac
 
