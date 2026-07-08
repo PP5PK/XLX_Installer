@@ -223,6 +223,64 @@ sudo tail -f /var/log/xlx.log
 
 ---
 
+## 🔍 Troubleshooting: Reflector Not Appearing in the Public List
+
+After a successful installation, your reflector should appear on any XLX dashboard (e.g., [xlxbra.net](https://xlxbra.net)) within a few minutes. If it does not, the most common cause is an **IP address mismatch** in the service configuration.
+
+### Understanding the IP Configuration
+
+The file `/etc/systemd/system/xlxd.service` contains a line like:
+
+```
+ExecStart=/xlxd/xlxd XLX300 192.168.1.10 127.0.0.1
+```
+
+The **second argument** (the first IP address) is critical — it must be the IP that has **direct outbound internet access**. There are two scenarios:
+
+| Setup | IP to use | Example |
+|-------|-----------|---------|
+| **Server behind a LAN router** (ports forwarded to the server) | Local/internal IP | `192.168.1.10` |
+| **VPS or server with public IP assigned directly to the NIC** | Public IP | `203.0.113.45` |
+
+The installer attempts to detect the correct IP automatically. However, in some environments — particularly those with complex networking, multiple interfaces, or NAT — it may not detect this correctly.
+
+### How to Fix It
+
+**1. Check which IP is currently configured:**
+```bash
+grep ExecStart /etc/systemd/system/xlxd.service
+```
+
+**2. Identify the correct IP for your setup:**
+```bash
+# Your local/internal IP
+hostname -I | awk '{print $1}'
+
+# Your public IP (as seen from the internet)
+curl -s https://v4.ident.me
+```
+
+**3. Edit the service file with the correct IP:**
+```bash
+sudo nano /etc/systemd/system/xlxd.service
+```
+
+**4. Apply the change and restart:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl stop xlxd.service
+sudo systemctl start xlxd.service
+```
+
+**5. Verify the service is running:**
+```bash
+sudo systemctl status xlxd.service
+```
+
+After restarting, allow a few minutes for the reflector to register and appear on the public list.
+
+---
+
 ## 👥 User Manager
 
 The installer includes `reflector_user_manager.sh`, a unified terminal tool for all user administration tasks. Instead of running separate scripts, everything is available from a single two-level interactive menu.
