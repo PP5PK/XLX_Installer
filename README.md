@@ -19,7 +19,7 @@ Supporting D-Star • C4FM • DMR protocols
 
 ## 📖 About the Project
 
-This project simplifies the installation of XLX reflectors with minimal user intervention. Developed by **Daniel K. ([PP5PK](https://www.qrz.com/db/PP5PK))**, this installer automates the setup of the XLX reflector created by [LX3JL](https://github.com/LX3JL/xlxd) and includes a customized dark theme dashboard. The goal is to make deploying an XLX reflector **easy, reliable, and maintainable**!
+This project simplifies the installation of XLX reflectors with minimal user intervention. Developed by **Daniel K. ([PP5PK](https://pp5pk.net))**, this installer automates the setup of the XLX reflector created by [LX3JL](https://github.com/LX3JL/xlxd) and includes a customized dark theme dashboard. The goal is to make deploying an XLX reflector **easy, reliable, and maintainable**!
 
 **Upon completion, you'll have a fully functional public D-Star/YSF/DMR XLX reflector with monitoring dashboard!** 🎉
 
@@ -219,13 +219,15 @@ sudo systemctl status xlxd.service
 ```bash
 # Watch live logs
 sudo tail -f /var/log/xlx.log
+or
+sudo jounalctl -u xlxd.service -f
 ```
 
 ---
 
 ## 🔍 Troubleshooting: Reflector Not Appearing in the Public List
 
-After a successful installation, your reflector should appear on any XLX dashboard (e.g., [xlxbra.net](https://xlxbra.net)) within a few minutes. If it does not, the most common cause is an **IP address mismatch** in the service configuration.
+After a successful installation, your reflector should appear on any XLX dashboard (e.g., [xlxbra.net](https://xlxbra.net/index.php?show=reflectors)) within a few minutes. If it does not, the most common cause is an **IP address mismatch** in the service configuration.
 
 ### Understanding the IP Configuration
 
@@ -386,7 +388,7 @@ No leftovers.
 
 If you encounter issues or have questions:
 
-- 📧 Contact the maintainer: [PP5PK](https://www.qrz.com/db/PP5PK)
+- 📧 Contact the maintainer: [PP5PK](https://pp5pk.net)
 - 🐛 Open an issue on GitHub
 - 💬 Join the amateur radio community discussions
 
