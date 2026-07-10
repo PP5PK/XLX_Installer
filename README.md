@@ -158,23 +158,22 @@ sudo ./installer.sh
 
 | Port | Type | Description |
 |---------|-----|---------|
-| 22 | TCP | SSH |
+| 22 | TCP | SSH | *or any other of your choice.
 | 80 | TCP | HTTP |
 | 443 | TCP | HTTPS |
 | 8080 | TCP | RepNeT |
-| 20001-20005 | TCP | DPlus protocol |
-| 40001 | TCP | ICom G3 |
 | 8880 | UDP| DMR+ DMO mode |
 | 10001 | UDP | JSON interface XLX Core |
 | 10002 | UDP | XLX interlink |
 | 10100 | UDP | AMBE controller |
 | 10101-10199 | UDP | AMBE transcoding |
 | 12345-12346 | UDP | ICom Terminal presence/request |
-| 20001-20005 | UDP | DPlus protocol |
+| 20001 | UDP | DPlus protocol |
 | 21110 | UDP | Yaesu IMRS protocol |
 | 30001 | UDP | DExtra protocol |
 | 30051 | UDP | DCS protocol |
 | 40000 | UDP | Terminal DV |
+| 40001 | TCP | ICom G3 |
 | 42000 | UDP | YSF protocol |
 | 62030 | UDP | MMDVM protocol |
 
