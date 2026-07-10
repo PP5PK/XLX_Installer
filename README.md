@@ -218,7 +218,7 @@ sudo systemctl status xlxd.service
 ```bash
 # Watch live logs
 sudo tail -f /var/log/xlx.log
-or
+# or
 sudo jounalctl -u xlxd.service -f
 ```
 
