@@ -158,11 +158,11 @@ sudo ./installer.sh
 
 | Port | Type | Description |
 |---------|-----|---------|
-| 22 | TCP | SSH | *or any other of your choice.
+| 22 | TCP | SSH |
 | 80 | TCP | HTTP |
 | 443 | TCP | HTTPS |
 | 8080 | TCP | RepNeT |
-| 8880 | UDP| DMR+ DMO mode |
+| 8880 | UDP | DMR+ DMO mode |
 | 10001 | UDP | JSON interface XLX Core |
 | 10002 | UDP | XLX interlink |
 | 10100 | UDP | AMBE controller |
