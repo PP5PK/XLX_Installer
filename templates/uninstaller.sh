@@ -58,34 +58,115 @@ center_wrap_color "\033[1;34m" "This script will remove the XLX Reflector, its d
 echo ""
 line_type2
 
-# List available Apache sites and ask user to pick the reflector domain
-while true; do
-    echo ""
-    print_blueb "AVAILABLE SITES IN /etc/apache2/sites-available:"
-    print_blue "=================================================="
-    echo ""
-    mapfile -t SITE_FILES < <(find /etc/apache2/sites-available/ -maxdepth 1 -name "*.conf" ! -name "000-default.conf" ! -name "default-ssl.conf" | sort)
-    if [ ${#SITE_FILES[@]} -eq 0 ]; then
-        print_red "No custom sites found in /etc/apache2/sites-available/. Nothing to remove."
-        exit 1
-    fi
-    for i in "${!SITE_FILES[@]}"; do
-        SITE_NAME=$(basename "${SITE_FILES[$i]}" .conf)
-        printf "  %2d) %s\n" "$((i+1))" "$SITE_NAME"
+# Detect leftover artifacts from a partial or failed installation
+detect_remnants() {
+    local found=0
+    REMNANT_LIST=()
+
+    for dir in /xlxd /var/www/html/xlxd /usr/src/xlxd /usr/src/XLXEcho /usr/src/XLX_Dark_Dashboard; do
+        [ -d "$dir" ] && { REMNANT_LIST+=("Directory : $dir"); found=1; }
     done
+
+    for svc in xlxd.service xlxecho.service xlx_log.service update_XLX_db.service update_XLX_db.timer; do
+        [ -f "/etc/systemd/system/$svc" ] && { REMNANT_LIST+=("Service   : /etc/systemd/system/$svc"); found=1; }
+    done
+
+    for f in /var/log/xlxd.xml /var/log/xlxd.pid /var/log/xlx.log /var/log/xlxecho.log \
+              /usr/local/bin/xlx_log.sh /etc/logrotate.d/xlx_logrotate.conf; do
+        [ -f "$f" ] && { REMNANT_LIST+=("File      : $f"); found=1; }
+    done
+
+    return $(( 1 - found ))
+}
+
+# ─── Domain / Apache site detection ───────────────────────────────────────────
+XLXDOMAIN=""
+SKIP_APACHE=0
+
+mapfile -t SITE_FILES < <(find /etc/apache2/sites-available/ -maxdepth 1 \
+    -name "*.conf" ! -name "000-default.conf" ! -name "default-ssl.conf" | sort)
+
+if [ ${#SITE_FILES[@]} -gt 0 ]; then
+
+    # Normal path: one or more Apache sites found, let user pick
+    while true; do
+        echo ""
+        print_blueb "AVAILABLE SITES IN /etc/apache2/sites-available:"
+        print_blue "=================================================="
+        echo ""
+        for i in "${!SITE_FILES[@]}"; do
+            SITE_NAME=$(basename "${SITE_FILES[$i]}" .conf)
+            printf "  %2d) %s\n" "$((i+1))" "$SITE_NAME"
+        done
+        echo ""
+        print_yellow "Enter the number corresponding to the reflector domain to remove:"
+        printf "> "
+        read -r SITE_CHOICE
+        if [[ "$SITE_CHOICE" =~ ^[0-9]+$ ]] && (( SITE_CHOICE >= 1 && SITE_CHOICE <= ${#SITE_FILES[@]} )); then
+            XLXDOMAIN=$(basename "${SITE_FILES[$((SITE_CHOICE-1))]}" .conf)
+            break
+        else
+            print_red "Invalid selection. Please enter a number from the list."
+        fi
+    done
+    print_yellow "Using: $XLXDOMAIN"
+    line_type1
+
+else
+
+    # No Apache site found — check for remnants of a partial install
     echo ""
-    print_yellow "Enter the number corresponding to the reflector domain to remove:"
-    printf "> "
-    read -r SITE_CHOICE
-    if [[ "$SITE_CHOICE" =~ ^[0-9]+$ ]] && (( SITE_CHOICE >= 1 && SITE_CHOICE <= ${#SITE_FILES[@]} )); then
-        XLXDOMAIN=$(basename "${SITE_FILES[$((SITE_CHOICE-1))]}" .conf)
-        break
+    print_yellow "No custom Apache sites found in /etc/apache2/sites-available/."
+    echo ""
+
+    if detect_remnants; then
+        print_redb "WARNING: Remnants of a partial or failed installation were detected:"
+        echo ""
+        for item in "${REMNANT_LIST[@]}"; do
+            print_wrapped "  • $item"
+        done
+        echo ""
+        print_wrapped "Choose how to proceed:"
+        print_wrapped "  1) Enter the domain manually — will also attempt Apache/SSL cleanup"
+        print_wrapped "  2) Skip domain — remove only the detected remnants listed above"
+        echo ""
+        while true; do
+            printf "> "
+            read -r OPTION
+            case "$OPTION" in
+                1)
+                    while true; do
+                        echo ""
+                        print_wrapped "Enter the domain used during installation (e.g., xlx.domain.com):"
+                        printf "> "
+                        read -r XLXDOMAIN
+                        XLXDOMAIN=$(echo "$XLXDOMAIN" | tr '[:upper:]' '[:lower:]')
+                        if [[ "$XLXDOMAIN" =~ ^([a-z0-9-]+\.)+[a-z]{2,}$ ]]; then
+                            break
+                        fi
+                        print_red "Invalid domain format. Try again."
+                    done
+                    print_yellow "Using: $XLXDOMAIN"
+                    line_type1
+                    break
+                    ;;
+                2)
+                    SKIP_APACHE=1
+                    print_yellow "Apache/SSL cleanup will be skipped."
+                    line_type1
+                    break
+                    ;;
+                *)
+                    print_red "Please enter 1 or 2."
+                    ;;
+            esac
+        done
     else
-        print_red "Invalid selection. Please enter a number from the list."
+        print_red "No XLX installation remnants found. Nothing to remove."
+        exit 0
     fi
-done
-print_yellow "Using: $XLXDOMAIN"
-line_type1
+
+fi
 
 # Confirm uninstallation
 echo ""
@@ -172,25 +253,33 @@ echo ""
 print_blueb "REMOVING APACHE CONFIGURATION..."
 print_blue "================================"
 echo ""
-APACHE_CONF="/etc/apache2/sites-available/$XLXDOMAIN.conf"
-if [ -f "$APACHE_CONF" ]; then
-    /usr/sbin/a2dissite "$XLXDOMAIN" >/dev/null 2>&1
-    rm -f "$APACHE_CONF"
-    print_green "✔ Removed Apache configuration: $APACHE_CONF"
+if [ "$SKIP_APACHE" -eq 1 ]; then
+    print_yellow "Apache cleanup skipped as requested."
+elif [ -n "$XLXDOMAIN" ]; then
+    APACHE_CONF="/etc/apache2/sites-available/$XLXDOMAIN.conf"
+    if [ -f "$APACHE_CONF" ]; then
+        /usr/sbin/a2dissite "$XLXDOMAIN" >/dev/null 2>&1
+        rm -f "$APACHE_CONF"
+        print_green "✔ Removed Apache configuration: $APACHE_CONF"
+    else
+        print_yellow "No Apache configuration file found for $XLXDOMAIN. Skipping."
+    fi
+    if [ -f "/etc/apache2/sites-available/000-default.conf" ]; then
+        /usr/sbin/a2ensite 000-default >/dev/null 2>&1
+        print_green "✔ Re-enabled default Apache site."
+    fi
+    systemctl restart apache2 >/dev/null 2>&1
+    print_green "✔ Apache service restarted."
 fi
-if [ -f "/etc/apache2/sites-available/000-default.conf" ]; then
-    /usr/sbin/a2ensite 000-default >/dev/null 2>&1
-    print_green "✔ Re-enabled default Apache site."
-fi
-systemctl restart apache2 >/dev/null 2>&1
-print_green "✔ Apache service restarted."
 
 # Optional: Remove Certbot and SSL certificates
 echo ""
 print_blueb "CHECKING FOR CERTBOT AND SSL CERTIFICATES..."
 print_blue "==========================================="
 echo ""
-if command -v certbot &>/dev/null; then
+if [ "$SKIP_APACHE" -eq 1 ] || [ -z "$XLXDOMAIN" ]; then
+    print_yellow "SSL cleanup skipped (no domain configured)."
+elif command -v certbot &>/dev/null; then
     mapfile -t SSL_FILES < <(find /etc/apache2/sites-available/ -maxdepth 1 -name "${XLXDOMAIN}*.conf" ! -name "${XLXDOMAIN}.conf" 2>/dev/null)
     if [ ${#SSL_FILES[@]} -gt 0 ]; then
         print_yellow "SSL configuration files found for $XLXDOMAIN:"
