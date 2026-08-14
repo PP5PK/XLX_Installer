@@ -353,7 +353,7 @@ if [ -e "$XLXDIR/xlxd" ]; then
     echo ""
 fi
 
-#  18. Resolve timezone from user input, checking only real system timezones
+#  19. Resolve timezone from user input, checking only real system timezones
 resolve_timezone() {
     local input="$1"
     local input_upper input_lower match
@@ -395,7 +395,7 @@ resolve_timezone() {
     return 1
 }
 
-#  19. Start of data collection
+#  20. Start of data collection
 clear
 line_type3
 echo ""
@@ -412,7 +412,7 @@ center_wrap_color $BLUE "========================"
 echo ""
 echo ""
 
-#  20. Questions begin...
+#  21. Questions begin...
 question_01() {
     print_red "$ICON_WARN Mandatory"
     print_wrapped "01. XLX Reflector ID, 3 alphanumeric characters. (e.g., 300, US1, BRA)"
