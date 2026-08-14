@@ -161,7 +161,7 @@ sudo ./installer.sh
 | 22 | TCP | SSH |
 | 80 | TCP | HTTP |
 | 443 | TCP | HTTPS |
-| 8080 | TCP | RepNeT |
+| 8080 | TCP | RepNet|
 | 8880 | UDP | DMR+ DMO mode |
 | 10001 | UDP | JSON interface XLX Core |
 | 10002 | UDP | XLX interlink |
