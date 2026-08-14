@@ -51,25 +51,35 @@ if [ "$PING_SUCCESS" -eq 0 ]; then
     exit 1
 fi
 
-#  4. Bash version check
+#  4. Check if curl is installed (required for public IP detection)
+if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is not installed. Installing..."
+    apt-get install -y -qq curl >/dev/null 2>&1 || {
+        echo "Error: Failed to install curl. Please run: apt install curl"
+        exit 1
+    }
+    echo "curl installed successfully."
+fi
+
+#  5. Bash version check
 if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
     echo "ERROR: Bash 4.0 or higher is required."
     exit 1
 fi
 
-#  5. Distro check
+#  6. Distro check
 if [ ! -e "/etc/debian_version" ]; then
     echo "This script has only been tested on Debian-based distributions."
     read -r -p "Do you want to continue anyway? (Y/N) " answer
     [[ "$answer" =~ ^[yY](es)?$ ]] || { echo "Execution cancelled."; exit 1; }
 fi
 
-#  6. Set the fixed character limit
+#  7. Set the fixed character limit
 MAX_WIDTH=100
 cols=$(tput cols 2>/dev/null || echo "$MAX_WIDTH")
 width=$(( cols < MAX_WIDTH ? cols : MAX_WIDTH ))
 
-#  7. Function to create different types of lines adjusted to length
+#  8. Function to create different types of lines adjusted to length
 line_type1() {
     printf '%*s\n' "$width" '' | tr ' ' '_'
 }
@@ -80,14 +90,14 @@ line_type3() {
     printf '%*s\n' "$width" '' | tr ' ' ':'
 }
 
-#  8. Function to display text with adjusted line breaks
+#  9. Function to display text with adjusted line breaks
 print_wrapped() {
     echo "$1" | fold -s -w "$width"
 }
 
 SEPQUE="_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_"
 
-#  9. Parameter definition
+#  10. Parameter definition
 XLXINS=$(pwd)
 USRSRC="/usr/src"
 HOMEIP=$(hostname -I 2>/dev/null | awk '{print $1}')
@@ -134,7 +144,7 @@ certbot
 python3-certbot-apache
 )
 
-#  10. Color palette
+#  11. Color palette
 NC='\033[0m'
 BLUE='\033[38;5;39m'
 BLUE_BRIGHT='\033[1;34m'
@@ -145,7 +155,7 @@ RED='\033[38;5;196m'
 RED_DARK='\033[38;5;124m'
 GRAY='\033[38;5;250m'
 
-#  11. Unicode icons
+#  12. Unicode icons
 ICON_OK="✔"
 ICON_ERR="✖"
 ICON_WARN="(⚠)"
@@ -153,7 +163,7 @@ ICON_INFO="(ℹ)"
 ICON_FATAL="(‼)"
 ICON_NOTE="🛈"
 
-#  12. Functions to display text with adjusted line breaks and colors
+#  13. Functions to display text with adjusted line breaks and colors
 print_blue() { echo -e "${BLUE}$(echo "$1" | fold -s -w "$width")${NC}"; }
 print_blueb() { echo -e "${BLUE_BRIGHT}$(echo "$1" | fold -s -w "$width")${NC}"; }
 print_green() { echo -e "${GREEN}$(echo "$1" | fold -s -w "$width")${NC}"; }
@@ -174,7 +184,7 @@ center_wrap_color() {
     done
 }
 
-#  13. Helper functions for error handling and sed escaping
+#  14. Helper functions for error handling and sed escaping
 # Information
 msg_info() {
     print_blue "$ICON_INFO $1"
@@ -208,12 +218,12 @@ error_exit() {
     exit 1
 }
 
-#  14. Escape special characters for use in sed replacement strings
+#  15. Escape special characters for use in sed replacement strings
 escape_sed() {
     printf '%s\n' "$1" | sed 's/[\/&|\\]/\\&/g'
 }
 
-#  15. Utility: validate module against MODQTD
+#  16. Utility: validate module against MODQTD
 is_module_valid() {
     local module="$1"
 
@@ -223,19 +233,127 @@ is_module_valid() {
     (( index >= 0 && index < MODQTD ))
 }
 
-#  16. Check for existing installs
+#  17. Universal input reader — typing 'x' at any prompt aborts the installation cleanly.
+#       Replaces all printf "> " + read -r pairs in question functions.
+read_or_abort() {
+    local _var="$1"
+    printf "> "
+    IFS= read -r "$_var" || true
+    local _val="${!_var:-}"
+    if [[ "${_val,,}" == "x" ]]; then
+        echo ""
+        line_type1
+        echo ""
+        print_yellow "Installation cancelled by user. No changes were made to the system."
+        echo ""
+        line_type1
+        echo ""
+        exit 0
+    fi
+}
+
+#  18. Check for existing installs
 if [ -e "$XLXDIR/xlxd" ]; then
     echo ""
     line_type2
     echo ""
-    center_wrap_color $RED "XLXD ALREADY INSTALLED!!! Run the 'uninstaller.sh'."
+    center_wrap_color $RED "XLXD IS ALREADY INSTALLED!"
+    echo ""
+    print_wrapped "An existing XLX installation was detected. It must be removed before installing again."
+    echo ""
+
+    while true; do
+        print_yellow "Would you like to run the uninstaller now? (YES/NO)"
+        printf "> "
+        read -r UNINST_CONFIRM
+        UNINST_CONFIRM=$(echo "$UNINST_CONFIRM" | tr '[:lower:]' '[:upper:]')
+        if [[ "$UNINST_CONFIRM" == "YES" || "$UNINST_CONFIRM" == "NO" ]]; then
+            break
+        fi
+        print_orange "Please enter YES or NO."
+    done
+
+    if [ "$UNINST_CONFIRM" == "NO" ]; then
+        print_wrapped "Please run the uninstaller manually before continuing: bash templates/uninstaller.sh"
+        echo ""
+        line_type2
+        echo ""
+        exit 1
+    fi
+
+    # Locate the uninstaller
+    UNINSTALLER="$XLXINS/templates/uninstaller.sh"
+    if [ ! -f "$UNINSTALLER" ]; then
+        echo ""
+        print_redd "Uninstaller not found at: $UNINSTALLER"
+        print_wrapped "Please run it manually before continuing."
+        echo ""
+        line_type2
+        echo ""
+        exit 1
+    fi
+
+    echo ""
+    line_type2
+    print_yellow "Launching uninstaller..."
+    line_type2
+    echo ""
+
+    # Run uninstaller — if is used to prevent set -e from aborting on non-zero exit
+    if ! bash "$UNINSTALLER"; then
+        echo ""
+        print_redd "The uninstaller exited with an error or was aborted by the user."
+        print_wrapped "Please check the state of the system and try again."
+        echo ""
+        line_type2
+        echo ""
+        exit 1
+    fi
+
+    # Verify the uninstallation was actually completed
+    if [ -e "$XLXDIR/xlxd" ]; then
+        echo ""
+        print_redd "Uninstallation does not appear to be complete — $XLXDIR/xlxd still exists."
+        print_wrapped "Please remove the existing installation manually and try again."
+        echo ""
+        line_type2
+        echo ""
+        exit 1
+    fi
+
     echo ""
     line_type2
     echo ""
-    exit 1
+    center_wrap_color $GREEN "Uninstallation completed successfully!"
+    echo ""
+
+    while true; do
+        print_yellow "Do you want to proceed with a fresh installation now? (YES/NO)"
+        printf "> "
+        read -r PROCEED_CONFIRM
+        PROCEED_CONFIRM=$(echo "$PROCEED_CONFIRM" | tr '[:lower:]' '[:upper:]')
+        if [[ "$PROCEED_CONFIRM" == "YES" || "$PROCEED_CONFIRM" == "NO" ]]; then
+            break
+        fi
+        print_orange "Please enter YES or NO."
+    done
+
+    if [ "$PROCEED_CONFIRM" == "NO" ]; then
+        print_yellow "Installation cancelled by user. Run the installer again whenever you are ready."
+        echo ""
+        line_type2
+        echo ""
+        exit 0
+    fi
+
+    echo ""
+    print_green "✔ Proceeding with fresh installation..."
+    echo ""
+    line_type2
+    echo ""
 fi
 
-#  17. Resolve timezone from user input, checking only real system timezones
+#  18. Resolve timezone from user input, checking only real system timezones
 resolve_timezone() {
     local input="$1"
     local input_upper input_lower match
@@ -277,13 +395,15 @@ resolve_timezone() {
     return 1
 }
 
-#  18. Start of data collection
+#  19. Start of data collection
 clear
 line_type3
 echo ""
 center_wrap_color $GREEN "XLX MULTIPROTOCOL AMATEUR RADIO REFLECTOR INSTALLER PROGRAM"
 echo ""
 center_wrap_color $GREEN "Next, you will be asked some questions. Answer with the requested information or, if applicable, to accept the suggested value, press [ENTER]"
+echo ""
+center_wrap_color $ORANGE "At any prompt, type X and press [ENTER] to cancel the installation."
 echo ""
 line_type3
 echo ""
@@ -292,13 +412,12 @@ center_wrap_color $BLUE "========================"
 echo ""
 echo ""
 
-#  19. Questions begin...
+#  20. Questions begin...
 question_01() {
     print_red "$ICON_WARN Mandatory"
     print_wrapped "01. XLX Reflector ID, 3 alphanumeric characters. (e.g., 300, US1, BRA)"
     while true; do
-        printf "> "
-        read -r XRFDIGIT
+        read_or_abort XRFDIGIT
         XRFDIGIT=$(echo "$XRFDIGIT" | tr '[:lower:]' '[:upper:]')
         if [[ "$XRFDIGIT" =~ ^[A-Z0-9]{3}$ ]]; then
             break
@@ -317,8 +436,7 @@ question_02() {
     print_red "$ICON_WARN Mandatory"
     print_wrapped "02. Dashboard FQDN (fully qualified domain name). (e.g., xlxbra.net)"
     while true; do
-        printf "> "
-        read -r XLXDOMAIN
+        read_or_abort XLXDOMAIN
         XLXDOMAIN=$(echo "$XLXDOMAIN" | tr '[:upper:]' '[:lower:]')
         if [[ "$XLXDOMAIN" =~ ^([a-z0-9-]+\.)+[a-z]{2,}$ ]]; then
             break
@@ -335,8 +453,7 @@ question_03() {
     print_red "$ICON_WARN Mandatory"
     print_wrapped "03. Sysop e-mail address"
     while true; do
-        printf "> "
-        read -r EMAIL
+        read_or_abort EMAIL
         EMAIL=$(echo "$EMAIL" | tr '[:upper:]' '[:lower:]')
         if [[ "$EMAIL" =~ ^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$ ]]; then
             break
@@ -353,8 +470,7 @@ question_04() {
     print_red "$ICON_WARN Mandatory"
     print_wrapped "04. Sysop callsign. Only letters and numbers allowed, max 6 characters."
     while true; do
-        printf "> "
-        read -r CALLSIGN
+        read_or_abort CALLSIGN
         CALLSIGN=$(echo "$CALLSIGN" | tr '[:lower:]' '[:upper:]')
         if [[ "$CALLSIGN" =~ ^[A-Z0-9]{3,6}$ ]]; then
             break
@@ -371,8 +487,7 @@ question_05() {
     print_red "$ICON_WARN Mandatory"
     print_wrapped "05. Reflector country name."
     while true; do
-        printf "> "
-        read -r COUNTRY
+        read_or_abort COUNTRY
         if [ -z "$COUNTRY" ]; then
             msg_caution "This field is mandatory and cannot be empty. Try again!"
         else
@@ -404,8 +519,7 @@ question_06() {
 
     # Interactive timezone selection
     while true; do
-        printf "> "
-        read -r USER_TZ
+        read_or_abort USER_TZ
 
         # CASE 1 — USER PRESSED ENTER (KEEP DETECTED TIMEZONE)
         if [[ -z "$USER_TZ" && -n "$AUTO_TZ" ]]; then
@@ -476,8 +590,7 @@ question_06() {
         fi
 
         print_yellow "Confirm this timezone? (Y/N, ENTER = Y)"
-        printf "> "
-        read -r CONFIRM_TZ
+        read_or_abort CONFIRM_TZ
         CONFIRM_TZ=$(echo "$CONFIRM_TZ" | tr '[:lower:]' '[:upper:]')
 
         # Default = Y
@@ -500,8 +613,7 @@ question_07() {
     print_wrapped "07. Comment to XLX Reflectors list."
     print_gray "Suggested: \"$COMMENT_DEFAULT\" $ACCEPT"
     while true; do
-        printf "> "
-        read -r COMMENT
+        read_or_abort COMMENT
         COMMENT=${COMMENT:-"$COMMENT_DEFAULT"}
 
         if [ ${#COMMENT} -le 100 ]; then
@@ -521,8 +633,7 @@ question_08() {
     print_wrapped "08. Custom text for the dashboard tab. (max 25 characters)"
     print_gray "Suggested: \"$HEADER_DEFAULT\" $ACCEPT"
     while true; do
-        printf "> "
-        read -r HEADER
+        read_or_abort HEADER
         HEADER=${HEADER:-"$HEADER_DEFAULT"}
 
         if [ ${#HEADER} -le 25 ]; then
@@ -542,8 +653,7 @@ question_09() {
     print_wrapped "09. Custom text on footer of the dashboard webpage."
     print_gray "Suggested: \"$FOOTER_DEFAULT\" $ACCEPT"
     while true; do
-        printf "> "
-        read -r FOOTER
+        read_or_abort FOOTER
         FOOTER=${FOOTER:-"$FOOTER_DEFAULT"}
 
         if [ ${#FOOTER} -le 50 ]; then
@@ -562,8 +672,7 @@ question_10() {
     print_wrapped "10. Create an SSL certificate (https) for the dashboard webpage? (Y/N)"
     print_gray "Suggested: Y $ACCEPT"
     while true; do
-        printf "> "
-        read -r INSTALL_SSL
+        read_or_abort INSTALL_SSL
         INSTALL_SSL=$(echo "${INSTALL_SSL:-Y}" | tr '[:lower:]' '[:upper:]')
         if [[ "$INSTALL_SSL" == "Y" || "$INSTALL_SSL" == "N" ]]; then
             break
@@ -581,8 +690,7 @@ question_11() {
     print_wrapped "11. Install Echo Test on module E? (Y/N)"
     print_gray "Suggested: Y $ACCEPT"
     while true; do
-        printf "> "
-        read -r INSTALL_ECHO
+        read_or_abort INSTALL_ECHO
         INSTALL_ECHO=$(echo "${INSTALL_ECHO:-Y}" | tr '[:lower:]' '[:upper:]')
         if [[ "$INSTALL_ECHO" == "Y" || "$INSTALL_ECHO" == "N" ]]; then
             break
@@ -604,8 +712,7 @@ question_12() {
     print_wrapped "12. Number of active modules for the DStar Reflector. ($MIN_MODULES - 26)"
     print_gray "Suggested: 5 $ACCEPT"
     while true; do
-        printf "> "
-        read -r MODQTD
+        read_or_abort MODQTD
         MODQTD=${MODQTD:-5}
         if [[ "$MODQTD" =~ ^[0-9]+$ && "$MODQTD" -ge "$MIN_MODULES" && "$MODQTD" -le 26 ]]; then
             break
@@ -623,8 +730,7 @@ question_13() {
     print_wrapped "13. YSF Reflector UDP port number. (1-65535)"
     print_gray "Suggested: 42000 $ACCEPT"
     while true; do
-        printf "> "
-        read -r YSFPORT
+        read_or_abort YSFPORT
         YSFPORT=${YSFPORT:-42000}
 
         # Numeric Validation
@@ -638,7 +744,8 @@ question_13() {
             msg_warn "Warning: Port $YSFPORT appears to be in use."
 
             while true; do
-                read -r -p "Do you want to continue anyway? (Y/N) " PORT_ANSWER
+                print_gray "Do you want to continue anyway? (Y/N)"
+                read_or_abort PORT_ANSWER
                 PORT_ANSWER=$(echo "${PORT_ANSWER:-N}" | tr '[:lower:]' '[:upper:]')
 
                 case "$PORT_ANSWER" in
@@ -671,8 +778,7 @@ question_14() {
     print_wrapped "14. YSF Wires-X frequency. In Hertz, 9 digits."
     print_gray "Suggested: 433125000 $ACCEPT"
     while true; do
-        printf "> "
-        read -r YSFFREQ
+        read_or_abort YSFFREQ
         YSFFREQ=${YSFFREQ:-433125000}
         if [[ "$YSFFREQ" =~ ^[0-9]{9}$ ]]; then
             break
@@ -690,8 +796,7 @@ question_15() {
     print_wrapped "15. Auto-link YSF to a module? (Y/N)"
     print_gray "Suggested: Y $ACCEPT"
     while true; do
-        printf "> "
-        read -r AUTOLINK_USER
+        read_or_abort AUTOLINK_USER
         AUTOLINK_USER=$(echo "${AUTOLINK_USER:-Y}" | tr '[:lower:]' '[:upper:]')
 
         if [[ "$AUTOLINK_USER" == "Y" || "$AUTOLINK_USER" == "N" ]]; then
@@ -743,8 +848,7 @@ question_16() {
         print_gray "Suggested: $SUGGESTED $ACCEPT"
 
         while true; do
-            printf "> "
-            read -r MODAUTO
+            read_or_abort MODAUTO
             MODAUTO=${MODAUTO:-$SUGGESTED}
             MODAUTO=${MODAUTO^^}
 
@@ -1021,17 +1125,37 @@ mkdir -p "$XLXDIR" || error_exit "Failed to create $XLXDIR directory"
 mkdir -p "$WEBDIR" || error_exit "Failed to create $WEBDIR directory"
 touch /var/log/xlxd.xml || error_exit "Failed to create /var/log/xlxd.xml"
 echo "Downloading DMR ID file..."
-# || true prevents set -e if Content-Length header is absent in the response
-FILE_SIZE=$(wget --spider --server-response "$DMRURL" 2>&1 | grep -i Content-Length | awk '{print $2}' || true)
+DMR_OK=0
+
+# Check file size — 10s timeout for the spider request; || true avoids pipefail
+# if Content-Length header is absent or the request times out
+FILE_SIZE=$(timeout 10 wget --spider --server-response "$DMRURL" 2>&1 \
+    | grep -i Content-Length | awk '{print $2}' || true)
+
+# Download with a 60s hard timeout. Using if-then suppresses set -e on pipeline
+# failure, so a timeout or unreachable server does not abort the installation.
 if [ -z "$FILE_SIZE" ]; then
     echo "Downloading..."
-    wget -q -O - "$DMRURL" | pv --force -p -t -r -b > /xlxd/dmrid.dat || error_exit "Failed to download DMR ID file"
+    if timeout 60 wget -q -O - "$DMRURL" | pv --force -p -t -r -b > /xlxd/dmrid.dat; then
+        DMR_OK=1
+    fi
 else
     echo "File size: $FILE_SIZE bytes"
-    wget -q -O - "$DMRURL" | pv --force -p -t -r -b -s "$FILE_SIZE" > /xlxd/dmrid.dat || error_exit "Failed to download DMR ID file"
+    if timeout 60 wget -q -O - "$DMRURL" | pv --force -p -t -r -b -s "$FILE_SIZE" > /xlxd/dmrid.dat; then
+        DMR_OK=1
+    fi
 fi
-if [ ! -s /xlxd/dmrid.dat ]; then
-    error_exit "DMR ID file is empty"
+
+if [ "$DMR_OK" -eq 1 ] && [ -s /xlxd/dmrid.dat ]; then
+    echo "[$(date '+%F %T')] DMR ID download: SUCCESS ($(wc -c < /xlxd/dmrid.dat) bytes)"
+    print_green "✔ DMR ID file downloaded successfully."
+else
+    # Remove any partial file left by an interrupted download
+    rm -f /xlxd/dmrid.dat
+    echo "[$(date '+%F %T')] DMR ID download: FAILED — server unreachable or 60s timeout exceeded — installation continues"
+    print_orange "⚠ Warning: DMR ID file could not be downloaded (server unreachable or timed out)."
+    print_orange "  The reflector will work normally. DMR ID lookups will become available after"
+    print_orange "  the next automatic daily update runs."
 fi
 echo "Creating custom XLX log..."
 cp "$XLXINS/templates/xlx_log.service" /etc/systemd/system/ || error_exit "Failed to copy xlx_log.service"
