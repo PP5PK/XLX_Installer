@@ -55,6 +55,7 @@ line_type2
 echo ""
 center_wrap_color "\033[1;34m" "XLX Reflector Uninstaller"
 center_wrap_color "\033[1;34m" "This script will remove the XLX Reflector, its dashboard, and related configurations."
+center_wrap_color "\033[38;5;250m" "At any prompt, type X and press [ENTER] to cancel the uninstallation."
 echo ""
 line_type2
 
@@ -79,6 +80,24 @@ detect_remnants() {
     return $(( 1 - found ))
 }
 
+# Universal input reader — typing 'x' at any prompt aborts the uninstallation cleanly.
+read_or_abort() {
+    local _var="$1"
+    printf "> "
+    IFS= read -r "$_var" || true
+    local _val="${!_var:-}"
+    if [[ "${_val,,}" == "x" ]]; then
+        echo ""
+        line_type2
+        echo ""
+        print_yellow "Uninstallation cancelled by user. No changes were made to the system."
+        echo ""
+        line_type2
+        echo ""
+        exit 0
+    fi
+}
+
 # ─── Domain / Apache site detection ───────────────────────────────────────────
 XLXDOMAIN=""
 SKIP_APACHE=0
@@ -100,8 +119,7 @@ if [ ${#SITE_FILES[@]} -gt 0 ]; then
         done
         echo ""
         print_yellow "Enter the number corresponding to the reflector domain to remove:"
-        printf "> "
-        read -r SITE_CHOICE
+        read_or_abort SITE_CHOICE
         if [[ "$SITE_CHOICE" =~ ^[0-9]+$ ]] && (( SITE_CHOICE >= 1 && SITE_CHOICE <= ${#SITE_FILES[@]} )); then
             XLXDOMAIN=$(basename "${SITE_FILES[$((SITE_CHOICE-1))]}" .conf)
             break
@@ -131,15 +149,13 @@ else
         print_wrapped "  2) Skip domain — remove only the detected remnants listed above"
         echo ""
         while true; do
-            printf "> "
-            read -r OPTION
+            read_or_abort OPTION
             case "$OPTION" in
                 1)
                     while true; do
                         echo ""
                         print_wrapped "Enter the domain used during installation (e.g., xlx.domain.com):"
-                        printf "> "
-                        read -r XLXDOMAIN
+                        read_or_abort XLXDOMAIN
                         XLXDOMAIN=$(echo "$XLXDOMAIN" | tr '[:upper:]' '[:lower:]')
                         if [[ "$XLXDOMAIN" =~ ^([a-z0-9-]+\.)+[a-z]{2,}$ ]]; then
                             break
@@ -172,9 +188,8 @@ fi
 echo ""
 print_blueb "WARNING: This will remove all XLX Reflector files, services, and configurations."
 while true; do
-    print_yellow "Are you sure you want to proceed with uninstallation? (YES/NO)"
-    printf "> "
-    read -r CONFIRM
+    print_yellow "Are you sure you want to proceed with uninstallation? (YES/NO/X)"
+    read_or_abort CONFIRM
     CONFIRM=$(echo "$CONFIRM" | tr '[:lower:]' '[:upper:]')
     if [[ "$CONFIRM" == "YES" || "$CONFIRM" == "NO" ]]; then
         break
@@ -289,8 +304,7 @@ elif command -v certbot &>/dev/null; then
         echo ""
         while true; do
             print_yellow "Would you like to remove the SSL certificate for $XLXDOMAIN? (YES/NO)"
-            printf "> "
-            read -r CERTBOT_CONFIRM
+            read_or_abort CERTBOT_CONFIRM
             CERTBOT_CONFIRM=$(echo "$CERTBOT_CONFIRM" | tr '[:lower:]' '[:upper:]')
             if [[ "$CERTBOT_CONFIRM" == "YES" || "$CERTBOT_CONFIRM" == "NO" ]]; then
                 break
