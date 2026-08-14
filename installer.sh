@@ -1153,7 +1153,7 @@ else
     # Remove any partial file left by an interrupted download
     rm -f /xlxd/dmrid.dat
     echo "[$(date '+%F %T')] DMR ID download: FAILED — Server unreachable or 60s timeout exceeded — Installation continues"
-    print_orange "$ICON_WARN Warning! DMR ID file could not be downloaded (server unreachable or timed out)."
+    msg_warn "Warning! DMR ID file could not be downloaded (server unreachable or timed out)."
     print_orange "The reflector will work normally. DMR ID lookups will become available after the next automatic daily update runs."
 fi
 echo "Creating custom XLX log..."
