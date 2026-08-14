@@ -403,7 +403,7 @@ center_wrap_color $GREEN "XLX MULTIPROTOCOL AMATEUR RADIO REFLECTOR INSTALLER PR
 echo ""
 center_wrap_color $GREEN "Next, you will be asked some questions. Answer with the requested information or, if applicable, to accept the suggested value, press [ENTER]"
 echo ""
-center_wrap_color $ORANGE "At any prompt, type X and press [ENTER] to cancel the installation."
+center_wrap_color $ORANGE "[*] At any prompt, type X and press [ENTER] to cancel the installation."
 echo ""
 line_type3
 echo ""
@@ -1021,8 +1021,8 @@ center_wrap_color $BLUE_BRIGHT "$ICON_INFO UPDATING OS..."
 center_wrap_color $BLUE "=================="
 echo ""
 
-apt-get update || error_exit "Failed to update package lists. Check your internet connection or package manager configuration."
-apt-get full-upgrade -y || error_exit "Failed to upgrade packages. Check your internet connection or package manager configuration."
+apt update || error_exit "Failed to update package lists. Check your internet connection or package manager configuration."
+apt full-upgrade -y || error_exit "Failed to upgrade packages. Check your internet connection or package manager configuration."
 
 #  Apply timezone only if it's NOT the system timezone.
 echo ""
@@ -1048,7 +1048,7 @@ if [ "$AVAIL_SPACE" -lt 1048576 ]; then
     error_exit "Insufficient disk space. At least 1GB required in /usr/src"
 fi
 
-apt-get install -y "${DEPAPP[@]}" || error_exit "Failed to install dependencies. Check package manager configuration."
+apt install -y "${DEPAPP[@]}" || error_exit "Failed to install dependencies. Check package manager configuration."
 
 PHPVER=$(php -v | head -n1 | awk '{print $2}' | cut -d. -f1,2)
 if [ -z "$PHPVER" ]; then
@@ -1152,10 +1152,9 @@ if [ "$DMR_OK" -eq 1 ] && [ -s /xlxd/dmrid.dat ]; then
 else
     # Remove any partial file left by an interrupted download
     rm -f /xlxd/dmrid.dat
-    echo "[$(date '+%F %T')] DMR ID download: FAILED — server unreachable or 60s timeout exceeded — installation continues"
-    print_orange "⚠ Warning: DMR ID file could not be downloaded (server unreachable or timed out)."
-    print_orange "  The reflector will work normally. DMR ID lookups will become available after"
-    print_orange "  the next automatic daily update runs."
+    echo "[$(date '+%F %T')] DMR ID download: FAILED — Server unreachable or 60s timeout exceeded — Installation continues"
+    print_orange "$ICON_WARN Warning! DMR ID file could not be downloaded (server unreachable or timed out)."
+    print_orange "The reflector will work normally. DMR ID lookups will become available after the next automatic daily update runs."
 fi
 echo "Creating custom XLX log..."
 cp "$XLXINS/templates/xlx_log.service" /etc/systemd/system/ || error_exit "Failed to copy xlx_log.service"
