@@ -54,7 +54,7 @@ fi
 #  4. Check if curl is installed (required for public IP detection)
 if ! command -v curl >/dev/null 2>&1; then
     echo "curl is not installed. Installing..."
-    apt-get install -y -qq curl >/dev/null 2>&1 || {
+    apt install -y -qq curl >/dev/null 2>&1 || {
         echo "Error: Failed to install curl. Please run: apt install curl"
         exit 1
     }
