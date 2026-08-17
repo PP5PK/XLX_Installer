@@ -434,7 +434,7 @@ This removes:
 
 If you encounter issues or have questions:
 
-- 📧 Contact the maintainer: [PP5PK](https://t.me/Whrebe_PP5PK)
+- 📧 Contact the maintainer: [PP5PK](https://t.me/Whrebe)
 - 🐛 Open an issue on GitHub
 - 💬 Join the amateur radio community discussions
 
