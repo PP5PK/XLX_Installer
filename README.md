@@ -225,7 +225,6 @@ After reinstalling, replace the newly generated file with your backup:
 
 ```bash
 sudo cp ~/callinghome.php.bak /xlxd/callinghome.php
-sudo systemctl restart xlxd.service
 ```
 
 This ensures your reflector is immediately recognized as the legitimate owner of its ID on the global network.
@@ -393,8 +392,8 @@ If you skipped automatic SSL during installation:
 The uninstaller is located at `templates/uninstaller.sh` within the installer directory. It can be launched manually or directly from the installer if an existing installation is detected during a new install attempt.
 
 ```bash
-cd /usr/src/XLX_Installer
-sudo bash templates/uninstaller.sh
+cd /usr/src/XLX_Installer/templates
+sudo ./uninstaller.sh
 ```
 
 This removes:
@@ -427,7 +426,7 @@ This removes:
 | **YSF Registration**        | [KC1AWV](https://dvref.com)                             | YSF Reflector registration service |
 | **Echo Test Service**       | [Narspt](https://github.com/narspt/XLXEcho)             | XLX Echo Test implementation       |
 | **SSL Certification**       | [Certbot](https://certbot.eff.org/)                     | Free SSL/TLS certificates          |
-| **This Installer**          | [PP5PK](https://www.qrz.com/db/PP5PK)                   | Automated installation script      |
+| **This Installer**          | [PP5PK](https://pp5pk.net)                              | Automated installation script      |
 
 ---
 
@@ -435,7 +434,7 @@ This removes:
 
 If you encounter issues or have questions:
 
-- 📧 Contact the maintainer: [PP5PK](https://www.qrz.com/db/PP5PK)
+- 📧 Contact the maintainer: [PP5PK](https://t.me/Whrebe_PP5PK)
 - 🐛 Open an issue on GitHub
 - 💬 Join the amateur radio community discussions
 
