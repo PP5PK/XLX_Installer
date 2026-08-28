@@ -443,7 +443,7 @@ If you encounter issues or have questions:
 ## 📄 License
 
 This project is open source and available for use by the amateur radio community.
-MIT License – free to use and modify.
+Released under the **The Unlicense** License. See [`LICENSE`](LICENSE) for details.
 
 ---
 
